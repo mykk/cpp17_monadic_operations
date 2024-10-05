@@ -168,13 +168,13 @@ TEST(MonadTests, MultipleResolveCalls) {
 }
 
 TEST(MonadTests, AndThenWithOptionalToOptional) {
-    auto maybe_even = [](int x) { return x % 2 == 0 ? std::make_optional<int>(x) : std::nullopt; };
+    auto even_or_nothing = [](int x) { return x % 2 == 0 ? std::make_optional<int>(x) : std::nullopt; };
 
-    auto opt_result = resolve(std::make_optional<int>(3), and_then(maybe_even));
+    auto opt_result = resolve(std::make_optional<int>(3), and_then(even_or_nothing));
 
     EXPECT_EQ(std::nullopt, opt_result);
 
-    auto valid_result = resolve(std::make_optional<int>(4), and_then(maybe_even));
+    auto valid_result = resolve(std::make_optional<int>(4), and_then(even_or_nothing));
 
     EXPECT_EQ(4, valid_result.value());
 }
