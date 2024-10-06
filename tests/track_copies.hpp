@@ -8,20 +8,24 @@ struct TrackCopies {
     TrackCopies(int v) : value{v} {};
     TrackCopies() : TrackCopies({}) {};
 
-    TrackCopies(const TrackCopies&) {
+    TrackCopies(const TrackCopies& rhs) {
+        value = rhs.value;
         ++copy_count;
     }
 
-    TrackCopies& operator=(const TrackCopies&) {
+    TrackCopies& operator=(const TrackCopies& rhs) {
+        value = rhs.value;
         ++copy_count;
         return *this;
     }
 
-    TrackCopies(TrackCopies&&) noexcept {
+    TrackCopies(TrackCopies&& rhs) noexcept {
+        value = rhs.value;
         ++move_count;
     }
 
-    TrackCopies& operator=(TrackCopies&&) noexcept {
+    TrackCopies& operator=(TrackCopies&& rhs) noexcept {
+        value = rhs.value;
         ++move_count;
         return *this;
     }

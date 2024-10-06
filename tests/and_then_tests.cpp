@@ -37,7 +37,7 @@ TEST(MonadTests, AndThenWithNonTrivialType) {
     auto foo = resolve(std::make_optional<int>(30), and_then([](auto x) { return std::make_optional<Foo>(x + 5); }));
     EXPECT_EQ(35, foo.value().x);
     EXPECT_EQ(std::nullopt, resolve(std::optional<int>{}, and_then([](auto x) { return std::make_optional<Foo>(x + 5); })));
-    
+
     EXPECT_EQ(std::nullopt, resolve(std::optional<int>{1}, and_then([](auto x) { return std::optional<Foo>{}; })));
 }
 
@@ -56,9 +56,79 @@ TEST(MonadTests, AndThenWithOptionalToOptional) {
 TEST(MonadTests, NoCopyMoveOnAndThenTest) {
     TrackCopies::reset_counts();
     
-    auto result = resolve(std::make_optional<int>(2), and_then([](auto) { return std::make_optional<TrackCopies>(); }));
+    auto result = resolve(std::make_optional<int>(2), and_then([](auto x) { return std::make_optional<TrackCopies>(x); }));
     
-    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(2, result.value().value);
     EXPECT_EQ(TrackCopies::copy_count, 0);
     EXPECT_EQ(TrackCopies::move_count, 0);
+}
+
+TEST(MonadTests, NoCopyMoveOnAndThenTest2) {
+    TrackCopies::reset_counts();
+    
+    auto result = resolve(std::make_optional<TrackCopies>(5), and_then([](auto&& x) { return std::make_optional<>(x.value); }));
+    
+    EXPECT_EQ(5, result.value());
+    EXPECT_EQ(TrackCopies::copy_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 0);
+}
+
+TEST(MonadTests, NoCopyMoveOnLValueAndThenTest) {
+    TrackCopies::reset_counts();
+    
+    auto track_obj = std::make_optional<TrackCopies>(5);
+    auto result = resolve(track_obj, and_then([](auto&& x) { return std::make_optional<>(x.value); }));
+    
+    EXPECT_EQ(5, result.value());
+    EXPECT_EQ(TrackCopies::copy_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 0);
+}
+
+TEST(MonadTests, NoCopyMoveOnLValueMovedAndThenTest) {
+    TrackCopies::reset_counts();
+    
+    auto track_obj = std::make_optional<TrackCopies>(5);
+    auto result = resolve(std::move(track_obj), and_then([](auto&& x) { return std::make_optional<>(x.value); }));
+    
+    EXPECT_EQ(5, result.value());
+    EXPECT_EQ(TrackCopies::copy_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 0);
+}
+
+TEST(MonadTests, AndThenReturnRefTest) {
+    TrackCopies::reset_counts();
+    
+    auto track_obj1 = std::make_optional<TrackCopies>(5);
+    auto track_obj2 = std::make_optional<TrackCopies>(10);
+
+    auto result = resolve(track_obj1, and_then([&track_obj2](auto&& x) -> auto& { return track_obj2; }));
+    
+    EXPECT_EQ(10, result.value().get().value);
+    EXPECT_EQ(TrackCopies::copy_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 0);
+
+    track_obj2.value().value = 3;
+    EXPECT_EQ(3, result.value().get().value);
+}
+
+TEST(MonadTests, AndThenReturnCopyTest) {
+    TrackCopies::reset_counts();
+    
+    auto track_obj = std::make_optional<TrackCopies>(5);
+    auto result = resolve(track_obj, and_then([](auto&& x) { return std::make_optional<TrackCopies>(std::forward<decltype(x)>(x)); }));
+    
+    EXPECT_EQ(5, result.value().value);
+    EXPECT_EQ(TrackCopies::copy_count, 1);
+    EXPECT_EQ(TrackCopies::move_count, 0);
+}
+
+TEST(MonadTests, AndThenReturnMovedTest) {
+    TrackCopies::reset_counts();
+    
+    auto track_obj = std::make_optional<TrackCopies>(5);
+    auto result = resolve(std::move(track_obj), and_then([](auto&& x) { return std::make_optional<TrackCopies>(std::forward<decltype(x)>(x)); }));
+
+    EXPECT_EQ(5, result.value().value);
+    EXPECT_EQ(TrackCopies::copy_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 1);
 }
