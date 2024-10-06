@@ -7,7 +7,13 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(googletest)
 
-add_executable(tests tests.cpp)
+add_executable(tests 
+  tests.cpp 
+  or_else_tests.cpp
+  transform_tests.cpp
+  and_then_tests.cpp
+  monadic_combination_tests.cpp
+)
 
 target_link_libraries(tests gtest gtest_main)
 
