@@ -57,13 +57,13 @@ auto and_then(F&& f) {
 }
 
 template <typename T>
-struct is_optional : std::false_type {};
+constexpr inline bool is_optional_v = false;
 
 template <typename T>
-struct is_optional<std::optional<T>> : std::true_type {};
+constexpr inline bool is_optional_v<std::optional<T>> = true;
 
 template <typename T>
-constexpr bool is_optional_v = is_optional<T>::value;
+using is_optional = std::bool_constant<is_optional_v<T>>;
 
 /*
 returns function that wraps given function. given function should return a value, or a reference to a value, or an optional or reference to an optional.

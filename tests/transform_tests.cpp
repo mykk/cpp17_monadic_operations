@@ -21,7 +21,6 @@ TEST(MonadTests, SimpleTransformTest) {
     EXPECT_EQ(std::nullopt, resolve(std::optional<int>{}, transform([&const_five](auto) -> const int& { return const_five; })));
 }
 
-
 TEST(MonadTests, TransformWithNonTrivialType) {
     struct Foo {
         int x;
@@ -77,10 +76,21 @@ TEST(MonadTests, NoCopyMoveOnForwardInTransformTest) {
     EXPECT_EQ(TrackCopies::move_count, 0);
 }
 
-TEST(MonadTests, NoCopyMoveOnTransformTest) {
+TEST(MonadTests, NoCopyMoveOnLValueTransformTest) {
     TrackCopies::reset_counts();
         
     auto result = resolve(std::make_optional<TrackCopies>(), transform([](auto&&) { return 1; }));
+    
+    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(TrackCopies::copy_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 0);
+}
+
+TEST(MonadTests, NoCopyMoveOnMovedLValueTransformTest) {
+    TrackCopies::reset_counts();
+        
+    std::optional<TrackCopies> track_obj = std::make_optional<TrackCopies>();
+    auto result = resolve(std::move(track_obj), transform([](auto&&) { return 1; }));
     
     EXPECT_TRUE(result.has_value());
     EXPECT_EQ(TrackCopies::copy_count, 0);
@@ -98,3 +108,4 @@ TEST(MonadTests, NoCopyOnReturnRefInTransformTest) {
     EXPECT_EQ(TrackCopies::copy_count, 0);
     EXPECT_EQ(TrackCopies::move_count, 0);
 }
+
