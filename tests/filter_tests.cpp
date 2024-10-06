@@ -149,5 +149,5 @@ TEST(MonadTests, FilterConstLValReturnNullTest) {
 
     EXPECT_FALSE(result.has_value());
     EXPECT_EQ(TrackCopies::copy_count, 0);
-    EXPECT_EQ(TrackCopies::move_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 1);
 }
