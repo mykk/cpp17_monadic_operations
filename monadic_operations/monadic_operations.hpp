@@ -112,9 +112,23 @@ auto or_else(F&& f) {
     };
 }
 
+template <typename F>
+auto filter(F&& f) {
+    return [f = std::forward<F>(f)](auto&& x) {
+        if (x.has_value()) {
+            auto const& value = *x;
+            if (f(value)) {
+                return std::forward<decltype(x)>(x);
+            }
+        }
+
+        return std::optional<std::remove_reference_t<decltype(std::forward<decltype(x)>(x).value())>>{}; 
+    };
+}
+
 //TODO:
-//filter
 //combine
+//flatten
 
 template <typename T, typename Monad>
 auto resolve(T&& maybe_value, Monad&& monad) {

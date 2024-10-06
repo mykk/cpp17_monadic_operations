@@ -13,6 +13,7 @@ add_executable(tests
   transform_tests.cpp
   and_then_tests.cpp
   monadic_combination_tests.cpp
+  filter_tests.cpp
 )
 
 target_link_libraries(tests gtest gtest_main)
