@@ -183,8 +183,10 @@ struct TrackCopies {
     static int copy_count;
     static int move_count;
 
-    TrackCopies() = default;
-    
+    int value;
+    TrackCopies(int v) : value{v} {};
+    TrackCopies() : TrackCopies({}) {};
+
     TrackCopies(const TrackCopies&) {
         ++copy_count;
     }
@@ -225,8 +227,18 @@ TEST(MonadTests, NoCopyOnTransformTest) {
 TEST(MonadTests, NoCopyMoveOnForwardInTransformTest) {
     TrackCopies::reset_counts();
     
-    auto result = resolve(std::make_optional<TrackCopies>(), transform([](auto&& x) -> decltype(auto) { return std::forward<decltype(x)>(x); }));
+    auto result = resolve(std::make_optional<TrackCopies>(12), transform([](auto&& x) { return x.value; }));
 
+    EXPECT_EQ(12, result.value());
+    EXPECT_EQ(TrackCopies::copy_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 0);
+}
+
+TEST(MonadTests, NoCopyMoveOnTransformTest) {
+    TrackCopies::reset_counts();
+        
+    auto result = resolve(std::make_optional<TrackCopies>(), transform([](auto&&) { return 1; }));
+    
     EXPECT_TRUE(result.has_value());
     EXPECT_EQ(TrackCopies::copy_count, 0);
     EXPECT_EQ(TrackCopies::move_count, 0);
@@ -260,6 +272,82 @@ TEST(MonadTests, NoCopyMoveOnOptionalOrElseTest) {
     EXPECT_TRUE(result.has_value());
     EXPECT_EQ(TrackCopies::copy_count, 0);
     EXPECT_EQ(TrackCopies::move_count, 0);
+}
+
+TEST(MonadTests, MoveRValOnOrElseReturnsOptionalTest) {
+    TrackCopies::reset_counts();
+
+    auto result = resolve(std::make_optional<TrackCopies>(), 
+        or_else([]() { return std::make_optional<TrackCopies>(); }),
+        transform([](auto&&){ return 1; }));
+    
+    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(TrackCopies::copy_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 1);
+}
+
+TEST(MonadTests, MoveRValOnOrElseReturnsValueTest) {
+    TrackCopies::reset_counts();
+
+    auto result = resolve(std::make_optional<TrackCopies>(),
+        or_else([]() { return TrackCopies(); }),
+        transform([](auto&&){ return 1; }));
+    
+    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(TrackCopies::copy_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 1);
+}
+
+TEST(MonadTests, CopyLValOnOrElseReturnsOptionalTest) {
+    TrackCopies::reset_counts();
+
+    auto track_obj = std::make_optional<TrackCopies>();
+    auto result = resolve(track_obj,
+        or_else([]() { return std::make_optional<TrackCopies>(); }),
+        transform([](auto&&){ return 1; }));
+    
+    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(TrackCopies::copy_count, 1);
+    EXPECT_EQ(TrackCopies::move_count, 0);
+}
+
+TEST(MonadTests, CopyLValOnOrElseReturnsValueTest) {
+    TrackCopies::reset_counts();
+
+    auto track_obj = std::make_optional<TrackCopies>();
+    auto result = resolve(track_obj,
+        or_else([]() { return TrackCopies(); }),
+        transform([](auto&&){ return 1; }));
+    
+    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(TrackCopies::copy_count, 1);
+    EXPECT_EQ(TrackCopies::move_count, 0);
+}
+
+TEST(MonadTests, MoveMovedLValOnOrElseReturnsOptionalTest) {
+    TrackCopies::reset_counts();
+
+    auto track_obj = std::make_optional<TrackCopies>();
+    auto result = resolve(std::move(track_obj),
+        or_else([]() { return std::make_optional<TrackCopies>(); }),
+        transform([](auto&&){ return 1; }));
+    
+    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(TrackCopies::copy_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 1);
+}
+
+TEST(MonadTests, MoveMovedLValOnOrElseReturnsValueTest) {
+    TrackCopies::reset_counts();
+
+    auto track_obj = std::make_optional<TrackCopies>();
+    auto result = resolve(std::move(track_obj),
+        or_else([]() { return TrackCopies(); }),
+        transform([](auto&&){ return 1; }));
+    
+    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(TrackCopies::copy_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 1);
 }
 
 TEST(MonadTests, NoCopyMoveOnOptionalOrElseAndTransformTest) {
