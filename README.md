@@ -37,7 +37,7 @@ int main() {
     }
 }
 ```
-possible result:
+possible output:
 
 2.000000
 
