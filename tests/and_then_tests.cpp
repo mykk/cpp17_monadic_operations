@@ -150,3 +150,16 @@ TEST(MonadTests, AndThenReturnRValRefTest) {
     EXPECT_EQ(TrackCopies::copy_count, 0);
     EXPECT_EQ(TrackCopies::move_count, 1);
 }
+
+TEST(MonadTests, AndThenReturnNullOptRefTest) {
+    TrackCopies::reset_counts();
+    
+    auto track_obj1 = std::make_optional<TrackCopies>(5);
+    auto track_obj2 = std::optional<TrackCopies>{};
+
+    auto result = resolve(track_obj1, and_then([&track_obj2](auto&& x) -> auto& { return track_obj2; }));
+    
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(TrackCopies::copy_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 0);
+}
