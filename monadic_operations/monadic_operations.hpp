@@ -75,9 +75,9 @@ if original function returns reference to an optional, the result will be option
 template <typename F>
 auto or_else(F&& f) -> decltype(auto)  {
     return [f = std::forward<F>(f)](auto&& x) -> decltype(auto) {
-        if constexpr (is_optional_v<std::remove_reference_t<decltype(f())>>) {
-            using ResultType = decltype(f());
+        using ResultType = decltype(f());
 
+        if constexpr (is_optional_v<std::remove_reference_t<ResultType>>) {
             using OptionalValueResultType = std::conditional_t<
                 std::is_reference_v<ResultType> && !std::is_rvalue_reference_v<ResultType>,
                 std::reference_wrapper<std::remove_reference_t<decltype(f().value())>>,
@@ -106,11 +106,10 @@ auto or_else(F&& f) -> decltype(auto)  {
                 }
             }
         } else {
-            using OptionalValueType = decltype(f());
             using OptionalValueResultType = std::conditional_t<
-                std::is_reference_v<OptionalValueType> && !std::is_rvalue_reference_v<OptionalValueType>,
-                std::reference_wrapper<std::remove_reference_t<OptionalValueType>>,
-                std::remove_reference_t<OptionalValueType>>;
+                std::is_reference_v<ResultType> && !std::is_rvalue_reference_v<ResultType>,
+                std::reference_wrapper<std::remove_reference_t<ResultType>>,
+                std::remove_reference_t<ResultType>>;
 
             if (x.has_value()) {
                 return std::optional<OptionalValueResultType>{*std::forward<decltype(x)>(x)};
@@ -133,17 +132,13 @@ auto filter(F&& f) {
     };
 }
 
-//TODO:
-//combine
-//flatten
-
 template <typename T, typename Monad>
 auto resolve(T&& maybe_value, Monad&& monad) -> decltype(auto) {
-    return monad(std::forward<T>(maybe_value));
+    return std::forward<Monad>(monad)(std::forward<T>(maybe_value));
 }
 
 template <typename T, typename Monad, typename... Monads>
 auto resolve(T&& maybe_value, Monad&& monad, Monads&&... monads) -> decltype(auto) {
-    return resolve(monad(std::forward<T>(maybe_value)), std::forward<Monads>(monads)...);
+    return resolve(std::forward<Monad>(monad)(std::forward<T>(maybe_value)), std::forward<Monads>(monads)...);
 }
 
