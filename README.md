@@ -28,25 +28,28 @@ std::optional<int> to_int(std::string_view sv)
 int main() {
     const std::array<std::string, 5> numbers{"4", "one", "-4", "9", "16"};
 
+    std::cout << "square roots of even numbers:\n";
     for (const auto& number : numbers) {
         std::cout << resolve(to_int(number),
             and_then([](auto i) {
-                return resolve(std::make_optional<int>(i),
-                               filter([](auto i){ return i >= 0; }),
+                return resolve(i >= 0 ? std::make_optional<int>(i) : std::nullopt,
+                               filter([](auto i){ return i % 2 == 0; }),
                                transform([](auto i){ return std::to_string(std::sqrt(i)); }),
-                               or_else([](){ return std::string{"negative number"}; }));
+                               or_else([](){ return std::string{"unsupported number"}; }));
             })).value_or("invalid number") << "\n";
     }
 }
 ```
 possible output:
 
+square roots of even numbers:
+
 2.000000
 
 invalid number
 
-negative number
+unsupported number
 
-3.000000
+unsupported number
 
 4.000000
