@@ -132,3 +132,21 @@ TEST(MonadTests, AndThenReturnMovedTest) {
     EXPECT_EQ(TrackCopies::copy_count, 0);
     EXPECT_EQ(TrackCopies::move_count, 1);
 }
+
+TEST(MonadTests, AndThenReturnRValRefTest) {
+    TrackCopies::reset_counts();
+    
+    auto track_obj = std::make_optional<TrackCopies>(5);
+    auto track_obj2 = std::make_optional<TrackCopies>(9);
+
+    auto result = resolve(std::move(track_obj),
+                          and_then([&track_obj2](auto&& x) -> decltype(auto) {
+                            track_obj2.value().value = x.value + 1;
+                            return std::move(track_obj2);
+                          }),
+                          and_then([](auto&& x) { return std::make_optional<>(x.value); }));
+
+    EXPECT_EQ(6, result.value());
+    EXPECT_EQ(TrackCopies::copy_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 1);
+}

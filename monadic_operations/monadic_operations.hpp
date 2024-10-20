@@ -13,9 +13,9 @@ auto transform(F&& f) {
     return [f = std::forward<F>(f)](auto&& x) {
         using ResultType = decltype(f(std::forward<decltype(x)>(x).value()));
         using OptionalResultType = std::conditional_t<
-            std::is_reference_v<ResultType>,
+            std::is_reference_v<ResultType> && !std::is_rvalue_reference_v<ResultType>,
             std::reference_wrapper<std::remove_reference_t<ResultType>>,
-            ResultType>;
+            std::remove_reference_t<ResultType>>;
 
         if (x.has_value()) {
             return std::optional<OptionalResultType>{f(*std::forward<decltype(x)>(x))};
@@ -31,18 +31,17 @@ returned function returns optional from the original function if input has value
 if original function returns reference to an optional, the result will be optional to reference to the value of returned optional.
 */
 template <typename F>
-auto and_then(F&& f) {    
+auto and_then(F&& f) {
     return [f = std::forward<F>(f)](auto&& x) {
         using ResultType = decltype(f(std::forward<decltype(x)>(x).value()));
         using OptionalValueType = std::remove_reference_t<decltype(f(std::forward<decltype(x)>(x).value()).value())>;
-
         using OptionalValueResultType = std::conditional_t<
-            std::is_reference_v<ResultType>,
+            std::is_reference_v<ResultType> && !std::is_rvalue_reference_v<ResultType>,
             std::reference_wrapper<std::remove_reference_t<OptionalValueType>>,
             OptionalValueType>;
 
         if (x.has_value()) {
-            if constexpr (std::is_reference_v<ResultType>) {
+            if constexpr (std::is_reference_v<ResultType> && !std::is_rvalue_reference_v<ResultType>) {
                 if (ResultType result = f(*std::forward<decltype(x)>(x))) {
                     return std::optional<OptionalValueResultType>(*result);
                 }
@@ -54,6 +53,7 @@ auto and_then(F&& f) {
 
         return std::optional<OptionalValueResultType>{};
     };
+    
 }
 
 template <typename T>
@@ -73,18 +73,19 @@ if original function returns reference to a value, the result will be optional t
 if original function returns reference to an optional, the result will be optional to reference to the value of returned optional or to reference to input value.
 */
 template <typename F>
-auto or_else(F&& f) {
-    return [f = std::forward<F>(f)](auto&& x) {
+auto or_else(F&& f) -> decltype(auto)  {
+    return [f = std::forward<F>(f)](auto&& x) -> decltype(auto) {
         if constexpr (is_optional_v<std::remove_reference_t<decltype(f())>>) {
             using ResultType = decltype(f());
+
             using OptionalValueResultType = std::conditional_t<
-                std::is_reference_v<ResultType>,
+                std::is_reference_v<ResultType> && !std::is_rvalue_reference_v<ResultType>,
                 std::reference_wrapper<std::remove_reference_t<decltype(f().value())>>,
                 std::remove_reference_t<decltype(f().value())>>;
             
-            if constexpr (std::is_reference_v<ResultType>) {
+            if constexpr (std::is_reference_v<ResultType> && !std::is_rvalue_reference_v<ResultType>) {
                 if (x.has_value()) {
-                    return std::optional<OptionalValueResultType>{*x};
+                    return std::optional<OptionalValueResultType>{*x}; //it's a ref. no need too forward anything.
                 }
             
                 if (ResultType result = f()) {
@@ -92,17 +93,24 @@ auto or_else(F&& f) {
                 }
                 return std::optional<OptionalValueResultType>{};
             } else {
-                if (x.has_value()) {
-                    return std::optional<OptionalValueResultType>{*std::forward<decltype(x)>(x)};
+                if constexpr(std::is_rvalue_reference_v<ResultType>) {
+                    if (x.has_value()) {
+                        return std::forward<decltype(x)>(x);
+                    }
+                    return f();
+                } else {
+                    if (x.has_value()) {
+                        return std::optional<OptionalValueResultType>{*std::forward<decltype(x)>(x)};
+                    }
+                    return f();
                 }
-                return f();
             }
         } else {
             using OptionalValueType = decltype(f());
             using OptionalValueResultType = std::conditional_t<
-                std::is_reference_v<OptionalValueType>,
+                std::is_reference_v<OptionalValueType> && !std::is_rvalue_reference_v<OptionalValueType>,
                 std::reference_wrapper<std::remove_reference_t<OptionalValueType>>,
-                OptionalValueType>;
+                std::remove_reference_t<OptionalValueType>>;
 
             if (x.has_value()) {
                 return std::optional<OptionalValueResultType>{*std::forward<decltype(x)>(x)};
@@ -116,8 +124,7 @@ template <typename F>
 auto filter(F&& f) {
     return [f = std::forward<F>(f)](auto&& x) {
         if (x.has_value()) {
-            auto const& value = *x;
-            if (f(value)) {
+            if (f(*x)) {
                 return std::forward<decltype(x)>(x);
             }
         }
@@ -131,12 +138,12 @@ auto filter(F&& f) {
 //flatten
 
 template <typename T, typename Monad>
-auto resolve(T&& maybe_value, Monad&& monad) {
+auto resolve(T&& maybe_value, Monad&& monad) -> decltype(auto) {
     return monad(std::forward<T>(maybe_value));
 }
 
 template <typename T, typename Monad, typename... Monads>
-auto resolve(T&& maybe_value, Monad&& monad, Monads&&... monads) {
+auto resolve(T&& maybe_value, Monad&& monad, Monads&&... monads) -> decltype(auto) {
     return resolve(monad(std::forward<T>(maybe_value)), std::forward<Monads>(monads)...);
 }
 

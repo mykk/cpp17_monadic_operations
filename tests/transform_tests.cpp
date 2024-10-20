@@ -109,3 +109,18 @@ TEST(MonadTests, NoCopyOnReturnRefInTransformTest) {
     EXPECT_EQ(TrackCopies::move_count, 0);
 }
 
+TEST(MonadTests, TransformReturnRValRefTest) {
+    TrackCopies::reset_counts();
+
+    std::optional<TrackCopies> track_obj = std::make_optional<TrackCopies>(12);
+    
+    auto result = resolve(std::move(track_obj), 
+                          transform([](auto&& x) -> decltype(auto) { return std::forward<decltype(x)>(x); }),
+                          transform([](auto&& x) -> decltype(auto) { return std::forward<decltype(x)>(x); }), 
+                          transform([](auto&& x) { return x.value; }));
+
+    EXPECT_EQ(12, result.value());
+    EXPECT_EQ(TrackCopies::copy_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 2);
+}
+

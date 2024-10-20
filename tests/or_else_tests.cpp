@@ -169,3 +169,60 @@ TEST(MonadTests, NoCopyMoveOnOptionalOrElseAndTransformTest) {
     EXPECT_EQ(TrackCopies::copy_count, 0);
     EXPECT_EQ(TrackCopies::move_count, 0);
 }
+
+TEST(MonadTests, OrElseReturnRValRefTest) {
+    TrackCopies::reset_counts();
+
+    std::optional<TrackCopies> empty{};
+    TrackCopies track_obj{12};
+    
+    auto result = resolve(empty, 
+                          or_else([&track_obj]() -> decltype(auto) { return std::move(track_obj); }),
+                          transform([](auto&& x) { return x.value; }));
+    EXPECT_EQ(12, result.value());
+    EXPECT_EQ(TrackCopies::copy_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 1);
+}
+
+TEST(MonadTests, OrElseForwardRValRefTest) {
+    TrackCopies::reset_counts();
+
+    auto not_empty = std::make_optional<TrackCopies>(15);
+    TrackCopies track_obj{12};
+    
+    auto result = resolve(std::move(not_empty), 
+                          or_else([&track_obj]() -> decltype(auto) { return std::move(track_obj); }),
+                          transform([](auto&& x) { return x.value; }));
+    EXPECT_EQ(15, result.value());
+    EXPECT_EQ(TrackCopies::copy_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 1);
+}
+
+TEST(MonadTests, OrElseReturnOptRValRefTest) {
+    TrackCopies::reset_counts();
+
+    std::optional<TrackCopies> empty{};
+    auto track_obj = std::make_optional<TrackCopies>(12);
+    
+    auto result = resolve(std::move(empty), 
+                          or_else([&track_obj]() -> decltype(auto) { return std::move(track_obj); }),
+                          transform([](auto&& x) { return x.value; }));
+    EXPECT_EQ(12, result.value());
+    EXPECT_EQ(TrackCopies::copy_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 0);
+}
+
+TEST(MonadTests, OrElseForwardOptRValRefTest) {
+    TrackCopies::reset_counts();
+
+    auto not_empty = std::make_optional<TrackCopies>(15);
+    auto track_obj = std::make_optional<TrackCopies>(12);
+    
+    auto result = resolve(std::move(not_empty), 
+                          or_else([&track_obj]() -> decltype(auto) { return std::move(track_obj); }),
+                          transform([](auto&& x) { return x.value; }));
+    EXPECT_EQ(15, result.value());
+    EXPECT_EQ(TrackCopies::copy_count, 0);
+    EXPECT_EQ(TrackCopies::move_count, 0);
+}
+
