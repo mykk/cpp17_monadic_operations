@@ -36,7 +36,6 @@ jobs:
       run: |
         lcov --capture --directory . --output-file coverage.info
         lcov --remove coverage.info '/usr/*' --output-file coverage.info  # Remove system headers
-        lcov --remove coverage.info '*test*' --output-file coverage.info  # Remove test files if needed
         genhtml coverage.info --output-directory coverage_html
 
     - name: Upload Coverage Report
