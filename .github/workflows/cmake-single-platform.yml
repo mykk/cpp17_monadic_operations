@@ -41,11 +41,8 @@ jobs:
         lcov --remove coverage.info '*test*' --output-file coverage.info || { echo "lcov remove failed"; exit 1; }
         genhtml coverage.info --output-directory coverage_html || { echo "genhtml failed"; exit 1; }
 
-    - name: Check Coverage Output Directory
-      run: ls -la coverage_html
-
     - name: Upload Coverage Report
       uses: actions/upload-artifact@v3
       with:
         name: coverage_report
-        path: coverage_html/
+        path: ${{github.workspace}}/build/coverage_html/
