@@ -7,8 +7,7 @@ on:
     branches: [ "main" ]
 
 env:
-  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
-  BUILD_TYPE: Debug  # Use Debug to enable coverage
+  BUILD_TYPE: Debug
 
 jobs:
   build:
@@ -29,14 +28,21 @@ jobs:
 
     - name: Test
       working-directory: ${{github.workspace}}/build
-      run: ctest -C ${{env.BUILD_TYPE}}
+      run: ctest -C ${{env.BUILD_TYPE}} --verbose
+
+    - name: Check Coverage Files
+      run: ls -la ${{github.workspace}}/build
 
     - name: Generate Coverage Report
       working-directory: ${{github.workspace}}/build
       run: |
-        lcov --capture --directory . --output-file coverage.info
-        lcov --remove coverage.info '/usr/*' --output-file coverage.info  # Remove system headers
-        genhtml coverage.info --output-directory coverage_html
+        lcov --capture --directory . --output-file coverage.info || { echo "lcov failed"; exit 1; }
+        lcov --remove coverage.info '/usr/*' --output-file coverage.info || { echo "lcov remove failed"; exit 1; }
+        lcov --remove coverage.info '*test*' --output-file coverage.info || { echo "lcov remove failed"; exit 1; }
+        genhtml coverage.info --output-directory coverage_html || { echo "genhtml failed"; exit 1; }
+
+    - name: Check Coverage Output Directory
+      run: ls -la coverage_html
 
     - name: Upload Coverage Report
       uses: actions/upload-artifact@v3
