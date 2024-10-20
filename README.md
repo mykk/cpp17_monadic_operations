@@ -13,6 +13,8 @@ See the accompanying tests for more examples.
 #include <cmath>
 #include <array>
 
+#include "monadic_operations/monadic_operations.hpp"
+
 std::optional<int> to_int(std::string_view sv)
 {
     int r{};
